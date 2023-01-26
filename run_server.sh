@@ -1,8 +1,8 @@
 #!/bin/bash
 ######## EDIT SERVER CONSTANTS HERE ########
-min_mem="3G"
-max_mem="6G"
+mem="6G"
 save_backup="true"
+use_git="true"
 prune_backups="true"
 ############################################
 
@@ -12,10 +12,16 @@ cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
 # create a backup and prune the folder if necessary
 if [ "${save_backup}" == "true" ]
 then
-    python3 spigotUp/backup.py -w
-    if [ "${prune_backups}" == "true" ]
+    if [ "${use_git}" == "true" ]
     then
-        python3 spigotUp/prune_backups.py
+        git add *
+        git commit -m "Auto Backup of `date`"
+    else
+        python3 fabricUp/backup.py -w
+        if [ "${prune_backups}" == "true" ]
+        then
+            python3 fabricUp/prune_backups.py
+        fi
     fi
 fi
 
@@ -26,8 +32,7 @@ then
 fi
 
 # run the server
-java -server -Xms"${min_mem}" -Xmx"${max_mem}" -XX:+UseConcMarkSweepGC -jar spigot*.jar nogui
-
+java -Xms"${mem}" -Xmx"${mem}" -jar server.jar nogui
 
 # give user chance to quit before restarting
 
@@ -41,4 +46,4 @@ do
 done
 
 echo "--- The Server is Restarting! --- "
-exec spigotUp/run_server.sh
+exec fabricUp/run_server.sh
