@@ -1,33 +1,40 @@
 #!/bin/bash
+######## EDIT SERVER CONSTANTS HERE ########
+mem="6G"
+save_backup="true"
+use_git="true"
+prune_backups="true"
+############################################
 
-remove_redundants() {
-    files=$(ls -la ~/spigot/backups | egrep -o $1.*)
-    last_file=""
-    for line in $files
-    do
-        parsed_line=$(echo $line | egrep -o $1........)
-        parsed_prev=$(echo $last_file | egrep -o $1........)
-        if [ "$parsed_line" == "$parsed_prev" ]
-        then
-           rm -rf "backups/$last_file"
-        fi
-        last_file=$line
-    done
-}
-
+# navigate to the server folder
 cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
-#trap "cd spigotUp; return" SIGINT
-#WORLD_NAME=$(cat server.properties | egrep "level-name=.*")
-#WORLD_NAME=${WORLD_NAME:11}
 
+# create a backup and prune the folder if necessary
+if [ "${save_backup}" == "true" ]
+then
+    if [ "${use_git}" == "true" ]
+    then
+        git add *
+        git commit -m "Auto Backup of `date`"
+    else
+        python3 fabricUp/backup.py -w
+        if [ "${prune_backups}" == "true" ]
+        then
+            python3 fabricUp/prune_backups.py
+        fi
+    fi
+fi
+
+# create the eula if necessary
 if [ ! -f eula.txt ]
 then
     echo "eula=true" > eula.txt
 fi
 
-java -server -Xms3G -Xmx6G -XX:+UseConcMarkSweepGC -jar -DIReallyKnowWhatIAmDoingISwear spigot*.jar nogui
-#remove_redundants $WORLD_NAME
-#cp -r ${WORLD_NAME} backups/${WORLD_NAME}-$(date +%F)
+# run the server
+java -Xms"${mem}" -Xmx"${mem}" -jar server.jar nogui
+
+# give user chance to quit before restarting
 
 echo "The server is going to restart in 5 seconds!"
 echo "--- Press Ctrl + C to cancel. ---"
@@ -39,4 +46,4 @@ do
 done
 
 echo "--- The Server is Restarting! --- "
-exec spigotUp/run_server.sh
+exec fabricUp/run_server.sh
