@@ -17,12 +17,10 @@ if [[ -z "$GLACIER_VAULT" ]]; then
 fi
 
 if [[ -z "$AWS_ACCOUNT_ID" ]]; then
-	echo AWS_ACCOUNT_ID must be set 1>&2
-	exit 1
+	AWS_ACCOUNT_ID="-"
 fi
 
-NEXT_WEEK_FILE=$SCRIPT_DIR/nextweek
-NEXT_MONTH_FILE=$SCRIPT_DIR/nextmonth
+NEXT_BACKUP_FILE=$SCRIPT_DIR/nextbackup
 
 WORLD_FILE=world6
 LOCAL_BACKUPS=backups
@@ -36,23 +34,27 @@ re='^[0-9]+$'
 # Get current time and check for next backup
 CURRENT_TIME=$(date +%s)
 
-NEXT_WEEK=$(cat ${NEXT_WEEK_FILE})
-if ! [[ $NEXT_WEEK =~ $re ]]; then
-	NEXT_WEEK=0
+NEXT_BACKUP=$(cat ${NEXT_BACKUP_FILE})
+if ! [[ $NEXT_BACKUP =~ $re ]]; then
+	NEXT_BACKUP=0
 fi
 
-# Handle weekly backups
-if [ $CURRENT_TIME -gt $(date --date="@$NEXT_WEEK" +%s) ]; then
+# Handle bi-weekly backups
+if [ $CURRENT_TIME -gt $(date --date="@$NEXT_BACKUP" +%s) ]; then
 	echo "Time for a weekly backup"
 
 	# backup
 	RECENT_BACKUP=$(find $LOCAL_BACKUPS -iname *.zip | tail -n 1)
-	echo $RECENT_BACKUP
+	DESCRIPTION=$WORLD_FILE-$(date -d "@$CURRENT_TIME" +%F)	
+
 	if [[ -e "$RECENT_BACKUP" ]]; then
-		aws glacier upload-archive --vault-name $GLACIER_VAULT \
-					   --account-id $AWS_ACCOUNT_ID \
-					   --body $RECENT_BACKUP
+		GLACIER_RESPONSE=$(aws glacier upload-archive 
+			--vault-name $GLACIER_VAULT \
+			--account-id $AWS_ACCOUNT_ID \
+			--body $RECENT_BACKUP \
+			--archive-description $DESCRIPTION)
+		
 	fi
 
-	echo $(date -d "$(date -d "@$CURRENT_TIME" +%F) + 7 days" +%s) > $NEXT_WEEK_FILE
+	echo $(date -d "$(date -d "@$CURRENT_TIME" +%F) + 14 days" +%s) > $NEXT_BACKUP_FILE
 fi
