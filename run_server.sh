@@ -1,29 +1,10 @@
 #!/bin/bash
 ######## EDIT SERVER CONSTANTS HERE ########
-mem="6G"
-save_backup="true"
-use_git="true"
-prune_backups="true"
+mem="8G"
 ############################################
 
 # navigate to the server folder
 cd "$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/.."
-
-# create a backup and prune the folder if necessary
-if [ "${save_backup}" == "true" ]
-then
-    if [ "${use_git}" == "true" ]
-    then
-        git add *
-        git commit -m "Auto Backup of `date`"
-    else
-        python3 fabricUp/backup.py -w
-        if [ "${prune_backups}" == "true" ]
-        then
-            python3 fabricUp/prune_backups.py
-        fi
-    fi
-fi
 
 # create the eula if necessary
 if [ ! -f eula.txt ]

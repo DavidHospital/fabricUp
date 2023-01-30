@@ -25,5 +25,12 @@ fi
 
 re='^[0-9]+$'
 
+tmux send-keys -t mcserver "save-all" C-m
+tmux send-keys -t mcserver "save-off" C-m
 zip -r "$LOCAL_BACKUPS/$(date +%F).zip" world6/
+tmux send-keys -t mcserver "save-on" C-m
 
+# backup to s3 as "latest"
+python $SCRIPT_DIR/s3_backup.py -d $LOCAL_BACKUPS -b $S3_BUCKET -k latest.zip
+
+ls -tp $LOCAL_BACKUPS/*.zip | tail -n +8 | xargs -I {} rm -- {}
