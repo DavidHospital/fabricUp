@@ -1,8 +1,17 @@
-#!/bin/bash
+#!/bin/bash -xe
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-SERVER_DIR=$SCRIPT_DIR/..
+SERVER_DIR=$( cd -- "$SCRIPT_DIR"/.. &> /dev/null && pwd )
 ENV_DIR=${SCRIPT_DIR}/.env
+PIPENV=~/.pyenv/shims/pipenv
+
+while getopts o:z flag
+do
+	case "${flag}" in
+		o) s3_output=${OPTARG};;
+		z) zip=true;
+	esac
+done
 
 cd $SCRIPT_DIR/..
 pwd
@@ -25,12 +34,17 @@ fi
 
 re='^[0-9]+$'
 
-tmux send-keys -t mcserver "save-all" C-m
-tmux send-keys -t mcserver "save-off" C-m
-zip -r "$LOCAL_BACKUPS/$(date +%F).zip" world6/
-tmux send-keys -t mcserver "save-on" C-m
+ls -tp $LOCAL_BACKUPS | grep ".zip$" | tail -n +2 | xargs -I {} rm -- $LOCAL_BACKUPS/{}
 
-# backup to s3 as "latest"
-$(cd $SCRIPT_DIR && pipenv run python $SCRIPT_DIR/s3_backup.py -d $SERVER_DIR/$LOCAL_BACKUPS -b $S3_BUCKET -k latest.zip)
+if [[ -n "${zip}" ]]; then
+	tmux send-keys -t mcserver "save-off" C-m
+	tmux send-keys -t mcserver "save-all" C-m
+	zip -r "$LOCAL_BACKUPS/$(date +%F).zip" world6/
+	tmux send-keys -t mcserver "save-on" C-m
+fi
 
-ls -tp $LOCAL_BACKUPS/*.zip | tail -n +8 | xargs -I {} rm -- {}
+if [[ -n "${s3_output}" ]]; then
+	# backup to s3 as "latest"
+	export PIPENV_PIPFILE=$SCRIPT_DIR/Pipfile && $PIPENV run python $SCRIPT_DIR/s3_backup.py -b "$S3_BUCKET" -d "$SERVER_DIR/$LOCAL_BACKUPS" -k $s3_output
+fi
+
